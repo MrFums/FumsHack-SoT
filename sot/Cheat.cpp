@@ -38,7 +38,6 @@ Vector2 RotatePoint(Vector2 pointToRotate, Vector2 centerPoint, float angle, boo
 	return returnVec;
 }
 
-
 void cCheat::readData()
 {
 	if (!baseModule)
@@ -49,27 +48,21 @@ void cCheat::readData()
 
 	uintptr_t address = 0;
 
-	if (!UWorld)
-	{
-		address = Mem->FindSignature(baseModule, baseSize,
-			(BYTE*)("\x48\x8B\x05\x00\x00\x00\x00\x48\x8B\x88\x00\x00\x00\x00\x48\x85\xC9\x74\x06\x48\x8B\x49\x70"),
-			(char*)"xxx????xxx????xxxxxxxxx");
-		auto uworldoffset = Mem->Read<int32_t>(address + 3);
-		UWorld = address + uworldoffset + 7;
-	}
-	if (!GNames)
-	{
-		address = Mem->FindSignature(baseModule, baseSize, (BYTE*)"\x48\x8B\x1D\x00\x00\x00\x00\x48\x85\x00\x75\x3A", (char*)"xxx????xx?xx");
-		auto gnamesoffset = Mem->Read<int32_t>(address + 3);
-		GNames = Mem->Read<uintptr_t>(address + gnamesoffset + 7);
-	}
-	if (!GObjects)
-	{
-		address = Mem->FindSignature(baseModule, baseSize, (BYTE*)"\x48\x8B\x15\x00\x00\x00\x00\x3B\x42\x1C", (char*)"xxx????xxx");
-		auto gobjectsoffset = Mem->Read<int32_t>(address + 3);
-		auto offset = gobjectsoffset + 7;
-		GObjects = Mem->Read<uintptr_t>(address + gobjectsoffset + 7);
-	}
+    if (!UWorld) {
+        address = Mem->FindSignature(baseModule, baseSize, (BYTE*)("\x48\x8B\x05\x00\x00\x00\x00\x48\x8B\x88\x00\x00\x00\x00\x48\x85\xC9\x74\x06\x48\x8B\x49\x70"), (char*)"xxx????xxx????xxxxxxxxx");
+        auto uworldoffset = Mem->Read<int32_t>(address + 3);
+        UWorld = address + uworldoffset + 7;
+    }
+    if (!GNames) {
+        address = Mem->FindSignature(baseModule, baseSize, (BYTE*)"\x48\x8B\x1D\x00\x00\x00\x00\x48\x85\x00\x75\x3A", (char*)"xxx????xx?xx");
+        auto gnamesoffset = Mem->Read<int32_t>(address + 3);
+        GNames = Mem->Read<uintptr_t>(address + gnamesoffset + 7);
+    }
+    if (!GObjects) {
+        address = Mem->FindSignature(baseModule, baseSize, (BYTE*)"\x89\x0D\x00\x00\x00\x00\x48\x8B\xDF\x48\x89\x5C\x24", (char*)"xx????xxxxxxx");
+        auto gobjectsoffset = Mem->Read<int32_t>(address + 2);
+        GObjects = Mem->Read<uintptr_t>(address + gobjectsoffset + 6);
+    }
 
 	if (Names.empty())
 	{
@@ -119,12 +112,15 @@ void cCheat::readData()
 		auto id = actor.GetID();
 		auto name = getNameFromIDmem(id);
 
+		
 
-		//SKELETON
 		if (name.find("BP_Skeleton") != std::string::npos && name.find("Pawn") != std::string::npos)
 		{
+			if (!Vars.ESP.Skeleton.bActive)
+				continue;
+
 			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
+			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;	
 
 			Vector2 Screen;
 			if (Misc->WorldToScreen(pos, &Screen))
@@ -132,862 +128,90 @@ void cCheat::readData()
 				Vector3 headPos = Vector3(pos.x, pos.y, pos.z + 100);
 
 				Vector2 ScreenTop;
-				Color boxColor = { Vars.ESP.MenuTake.CaptainColor[0],Vars.ESP.MenuTake.CaptainColor[1],Vars.ESP.MenuTake.CaptainColor[2],Vars.ESP.MenuTake.CaptainColor[3] };
+				Color boxColor = { Vars.ESP.Skeleton.colorSkeleton[0],Vars.ESP.Skeleton.colorSkeleton[1],Vars.ESP.Skeleton.colorSkeleton[2],Vars.ESP.Skeleton.colorSkeleton[3] };
+				//Color boxColor = { 255,255,0,255 };
 
 				if (Misc->WorldToScreen(headPos, &ScreenTop))
 				{
 					int hi = (Screen.y - ScreenTop.y) * 2;
-					int wi = hi * 0.65;
+					int wi = hi * 0.65;			
 
-					if (Vars.ESP.MenuTake.Skeleton)
-					{
-						DrawBox(ScreenTop.x - wi / 2, ScreenTop.y, wi, hi, boxColor);
-					}
-					if (Vars.ESP.MenuTake.SkeletonName)
-					{
-						if ((int)distance < 25) {
-							DrawString("» • «", Screen.x, Screen.y, boxColor, true, "dist_3");
-						}
-						else if ((int)distance < 15) {
-							DrawString("» • «", Screen.x, Screen.y, boxColor, true, "dist_2");
-						}
-						else if ((int)distance < 5) {
-							DrawString("» • «", ScreenTop.x, ScreenTop.y - 14, boxColor, true, "dist_1");
-						}
-						else {
-							DrawString(std::string("Skeleton » " + std::to_string((int)distance) + "m").c_str(), ScreenTop.x, ScreenTop.y - 14, boxColor, true, "small");
-						}
-					}
-					if (Vars.ESP.MenuTake.SkeletonItem)
+					DrawBox(ScreenTop.x - wi / 2, ScreenTop.y, wi, hi, boxColor);
+					DrawString(std::string("Skeleton [ " + std::to_string((int)distance) + "m ]").c_str(), ScreenTop.x, ScreenTop.y - 14, Color{ 255,255,255 }, true, "small");
+					if (Vars.ESP.Skeleton.bWeapon)
 					{
 						auto ItemName = actor.GetWieldedItemComponent().GetWieldedItem().GetItemInfo().GetItemDesc().GetName();
 
 						if (ItemName.length() < 32)
-							DrawString(ItemName.c_str(), ScreenTop.x, ScreenTop.y + hi, boxColor, true, "small");
+							DrawString(ItemName.c_str(), ScreenTop.x, ScreenTop.y + hi, Color{ 255,255,255 }, true, "small");
 					}
 
 				}
 			}
 		}
 
-		//ASHEN LORD SKELETON
-		if (name.find("BP_GiantSkeletonPawnBase_C") != std::string::npos)
+		else if (name.find("IslandService") != std::string::npos)
 		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
+			if (!Vars.ESP.World.bIslands)
+				continue;
 
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
+
+			auto IslandService = *reinterpret_cast<AIslandService*>(&actors[i]);
+
+			auto Islands = IslandService.GetIslandArray();
+			if (!Islands.IsValid())
+				continue;
+
+			for (int p = 0; p < Islands.Length(); ++p)
 			{
-				Vector3 headPos = Vector3(pos.x, pos.y, pos.z + 100);
+				auto Island = Islands[p];
 
-				Vector2 ScreenTop;
-				Color boxColor = { Vars.ESP.MenuTake.CaptainColor[0],Vars.ESP.MenuTake.CaptainColor[1],Vars.ESP.MenuTake.CaptainColor[2],Vars.ESP.MenuTake.CaptainColor[3] };
+				Color color = { Vars.ESP.World.colorWorld[0],Vars.ESP.World.colorWorld[1],Vars.ESP.World.colorWorld[2],Vars.ESP.World.colorWorld[3] };
 
-				if (Misc->WorldToScreen(headPos, &ScreenTop))
-				{
-					int hi = (Screen.y - ScreenTop.y) * 2;
-					int wi = hi * 0.65;
+				Vector2 Screen;
+				if (Misc->WorldToScreen(Vector3(Island.IslandBoundsCentre.x, Island.IslandBoundsCentre.y, 20000), &Screen))
+					DrawString(std::string(getNameFromIDmem(Island.IslandNameId)).c_str(), Screen.x, Screen.y, color, true, "default");
 
-					if (Vars.ESP.MenuTake.Skeleton)
-					{
-						DrawBox(ScreenTop.x - wi / 2, ScreenTop.y, wi, hi, boxColor);
-					}
-					if (Vars.ESP.MenuTake.SkeletonName)
-					{
-						if ((int)distance < 25) {
-							DrawString("» • «", Screen.x, Screen.y, boxColor, true, "dist_3");
-						}
-						else if ((int)distance < 15) {
-							DrawString("» • «", Screen.x, Screen.y, boxColor, true, "dist_2");
-						}
-						else if ((int)distance < 5) {
-							DrawString("» • «", ScreenTop.x, ScreenTop.y - 14, boxColor, true, "dist_1");
-						}
-						else {
-							DrawString(std::string("Ashen Lord » " + std::to_string((int)distance) + "m").c_str(), ScreenTop.x, ScreenTop.y - 14, boxColor, true, "small");
-						}
-					}
-					if (Vars.ESP.MenuTake.SkeletonItem)
-					{
-						auto ItemName = actor.GetWieldedItemComponent().GetWieldedItem().GetItemInfo().GetItemDesc().GetName();
-
-						if (ItemName.length() < 32)
-							DrawString(ItemName.c_str(), ScreenTop.x, ScreenTop.y + hi, boxColor, true, "small");
-					}
-
-				}
 			}
 		}
-
-		//AMMO CRATE
-		else if (name.find("Ammo") != std::string::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorCommon[0],Vars.ESP.colorCommon[1],Vars.ESP.colorCommon[2],Vars.ESP.colorCommon[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if (Vars.ESP.MenuTake.ItemsOther || Vars.ESP.MenuTake.ItemsCommon)
-				{
-					if ((int)distance > 10 && (int)distance < 20) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance >= 20 && (int)distance < 200){
-						DrawString(std::string("Ammo Crate » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-				}
-		}
-
-		//LORE BOOK
-		else if (name.find("Lore") != std::string::npos || name.find("Tale") != std::string::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.MenuTake.LoreColor[0],Vars.ESP.MenuTake.LoreColor[1],Vars.ESP.MenuTake.LoreColor[2],Vars.ESP.MenuTake.LoreColor[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if (Vars.ESP.MenuTake.LoreBooks)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::string("Lore Book » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-				}
-		}
-
-		//GLORIUS SEA DOG CHEST
-		//ty throwaway666
-		else if (name.find("BP_RomeBeacon_") != std::string::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorSpecial[0],Vars.ESP.colorSpecial[1],Vars.ESP.colorSpecial[2],Vars.ESP.colorSpecial[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if (Vars.ESP.MenuTake.ItemsLegendary)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::string("Sea Dog Chest » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-						if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-						{
-							DrawCircle(Screen.x, Screen.y, 3, 25, color);
-						}
-					}
-				}
-		}
-
-		//STORAGE BOX
-		else if (name.find("BP_MerchantCrate_AnyItemCrate_ItemInfo_C") != std::string::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorCommon[0],Vars.ESP.colorCommon[1],Vars.ESP.colorCommon[2],Vars.ESP.colorCommon[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if (Vars.ESP.MenuTake.ItemsOther || Vars.ESP.MenuTake.ItemsCommon)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::string("Storage Crate » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-						if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-						{
-							DrawCircle(Screen.x, Screen.y, 3, 25, color);
-						}
-					}
-				}
-		}
-
-		//BARREL
-		else if (name.find("BP_BuoyantStorageBarrel_LockedToWater") != std::string::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorCommon[0],Vars.ESP.colorCommon[1],Vars.ESP.colorCommon[2],Vars.ESP.colorCommon[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if (Vars.ESP.MenuTake.ItemsBarrels || Vars.ESP.MenuTake.ItemsCommon)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::string("Barrel » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-						if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-						{
-							DrawCircle(Screen.x, Screen.y, 3, 25, color);
-						}
-					}
-				}
-		}
-
-		//BOTTLE
-		else if (name.find("Bottle") != std::string::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorRare[0], Vars.ESP.colorRare[1], Vars.ESP.colorRare[2], Vars.ESP.colorRare[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if (Vars.ESP.MenuTake.ItemsOther || Vars.ESP.MenuTake.ItemsLegendary)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::string("Message in Bottle » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					}
-				}
-		}
-
-		//CAGE - CHICKEN
-		else if (Vars.ESP.MenuTake.ItemsCages && name.find("ChickenCrate") != std::wstring::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorCommon[0],Vars.ESP.colorCommon[1],Vars.ESP.colorCommon[2],Vars.ESP.colorCommon[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if ((int)distance < 10) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-				}
-				else if ((int)distance < 5) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-				}
-				else if ((int)distance < 2) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-				}
-				else {
-					DrawString(std::string("Chicken Cage » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-					{
-						DrawCircle(Screen.x, Screen.y, 3, 25, color);
-					}
-				}
-		}
-
-		//CAGE - PIG
-		else if (Vars.ESP.MenuTake.ItemsCages && name.find("PigCrate") != std::wstring::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorCommon[0],Vars.ESP.colorCommon[1],Vars.ESP.colorCommon[2],Vars.ESP.colorCommon[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if ((int)distance < 10) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-				}
-				else if ((int)distance < 5) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-				}
-				else if ((int)distance < 2) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-				}
-				else {
-					DrawString(std::string("Pig Cage » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-					{
-						DrawCircle(Screen.x, Screen.y, 3, 25, color);
-					}
-				}
-		}
-
-		//CAGE - SNAKE
-		else if (Vars.ESP.MenuTake.ItemsCages && name.find("SnakeBasket") != std::wstring::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorCommon[0],Vars.ESP.colorCommon[1],Vars.ESP.colorCommon[2],Vars.ESP.colorCommon[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if ((int)distance < 10) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-				}
-				else if ((int)distance < 5) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-				}
-				else if ((int)distance < 2) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-				}
-				else {
-					DrawString(std::string("Snake Cage » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-					{
-						DrawCircle(Screen.x, Screen.y, 3, 25, color);
-					}
-				}
-		}
-
-		// MERCHANT - BANANA
-		else if (Vars.ESP.MenuTake.ItemsOther && name.find("BananaCrate") != std::wstring::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorCommon[0],Vars.ESP.colorCommon[1],Vars.ESP.colorCommon[2],Vars.ESP.colorCommon[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if ((int)distance < 10) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-				}
-				else if ((int)distance < 5) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-				}
-				else if ((int)distance < 2) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-				}
-				else {
-					DrawString(std::string("Fruit Crate » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-					{
-						DrawCircle(Screen.x, Screen.y, 3, 25, color);
-					}
-				}
-		}
-
-		// MERCHANT - TEA
-		else if (Vars.ESP.MenuTake.ItemsOther && name.find("TeaCrate") != std::wstring::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorCommon[0],Vars.ESP.colorCommon[1],Vars.ESP.colorCommon[2],Vars.ESP.colorCommon[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if ((int)distance < 10) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-				}
-				else if ((int)distance < 5) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-				}
-				else if ((int)distance < 2) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-				}
-				else {
-					DrawString(std::string("Tea Crate » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-					{
-						DrawCircle(Screen.x, Screen.y, 3, 25, color);
-					}
-				}
-		}
-
-		// MERCHANT - SUGAR
-		else if (Vars.ESP.MenuTake.ItemsOther && name.find("SugarCrate") != std::wstring::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorCommon[0],Vars.ESP.colorCommon[1],Vars.ESP.colorCommon[2],Vars.ESP.colorCommon[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if ((int)distance < 10) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-				}
-				else if ((int)distance < 5) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-				}
-				else if ((int)distance < 2) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-				}
-				else {
-					DrawString(std::string("Sugar Crate » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-					{
-						DrawCircle(Screen.x, Screen.y, 3, 25, color);
-					}
-				}
-		}
-
-		// COLLECTOR
-		else if (Vars.ESP.MenuTake.ItemsCommon && name.find("Collector") != std::wstring::npos && name.find("Ashen") == std::wstring::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorCommon[0],Vars.ESP.colorCommon[1],Vars.ESP.colorCommon[2],Vars.ESP.colorCommon[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if ((int)distance < 10) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-				}
-				else if ((int)distance < 5) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-				}
-				else if ((int)distance < 2) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-				}
-				else {
-					DrawString(std::string("Collector Chest » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-					{
-						DrawCircle(Screen.x, Screen.y, 3, 25, color);
-					}
-				}
-		}
-
-		// MERCHANT - SILK
-		else if (Vars.ESP.MenuTake.ItemsOther && name.find("BP_MerchantCrate_Commodity_SilkCrate_Proxy_C") != std::wstring::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorCommon[0],Vars.ESP.colorCommon[1],Vars.ESP.colorCommon[2],Vars.ESP.colorCommon[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if ((int)distance < 10) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-				}
-				else if ((int)distance < 5) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-				}
-				else if ((int)distance < 2) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-				}
-				else {
-					DrawString(std::string("Silk Crate » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-					{
-						DrawCircle(Screen.x, Screen.y, 3, 25, color);
-					}
-				}
-		}
-
-		// ASHEN CHEST
-		else if (Vars.ESP.MenuTake.ItemsLegendary && name.find("AshenCollector") != std::wstring::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorSpecial[0],Vars.ESP.colorSpecial[1],Vars.ESP.colorSpecial[2],Vars.ESP.colorSpecial[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if ((int)distance < 10) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-				}
-				else if ((int)distance < 5) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-				}
-				else if ((int)distance < 2) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-				}
-				else {
-					DrawString(std::string("Ashen Chest » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-					{
-						DrawCircle(Screen.x, Screen.y, 3, 25, color);
-					}
-				}
-		}
-
-		// SPICE - SILK
-		else if (Vars.ESP.MenuTake.ItemsOther && name.find("BP_MerchantCrate_Commodity_SpiceCrate_Proxy_C") != std::wstring::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorCommon[0],Vars.ESP.colorCommon[1],Vars.ESP.colorCommon[2],Vars.ESP.colorCommon[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if ((int)distance < 10) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-				}
-				else if ((int)distance < 5) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-				}
-				else if ((int)distance < 2) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-				}
-				else {
-					DrawString(std::string("Spice Crate » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-					{
-						DrawCircle(Screen.x, Screen.y, 3, 25, color);
-					}
-				}
-		}
-
-		// MERCHANT - WOOD
-		else if (Vars.ESP.MenuTake.ItemsOther && name.find("BP_MerchantCrate_WoodCrateProxy_C") != std::wstring::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorCommon[0],Vars.ESP.colorCommon[1],Vars.ESP.colorCommon[2],Vars.ESP.colorCommon[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if ((int)distance < 10) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-				}
-				else if ((int)distance < 5) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-				}
-				else if ((int)distance < 2) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-				}
-				else {
-					DrawString(std::string("Wood Crate » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-					{
-						DrawCircle(Screen.x, Screen.y, 3, 25, color);
-					}
-				}
-		}
-
-		// MERCHANT - CANNONBALL
-		else if (Vars.ESP.MenuTake.ItemsOther && name.find("BP_MerchantCrate_CannonballCrateProxy") != std::wstring::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorCommon[0],Vars.ESP.colorCommon[1],Vars.ESP.colorCommon[2],Vars.ESP.colorCommon[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if ((int)distance < 10) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-				}
-				else if ((int)distance < 5) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-				}
-				else if ((int)distance < 2) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-				}
-				else {
-					DrawString(std::string("Cannonball Crate » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-					{
-						DrawCircle(Screen.x, Screen.y, 3, 25, color);
-					}
-				}
-		}
-
-		//HUMBLE GIFT
-		else if (Vars.ESP.MenuTake.ItemsLegendary && name.find("Gift") != std::wstring::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorSpecial[0],Vars.ESP.colorSpecial[1],Vars.ESP.colorSpecial[2],Vars.ESP.colorSpecial[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if ((int)distance < 10) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-				}
-				else if ((int)distance < 5) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-				}
-				else if ((int)distance < 2) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-				}
-				else {
-					DrawString(std::string("Event Gift » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-					{
-						DrawCircle(Screen.x, Screen.y, 3, 25, color);
-					}
-				}
-		}
-
-		//GUNPOWDER
-		else if (Vars.ESP.MenuTake.ItemsUtility && name.find("Gunpowder") != std::wstring::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorCommon[0],Vars.ESP.colorCommon[1],Vars.ESP.colorCommon[2],Vars.ESP.colorCommon[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if ((int)distance < 10) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-				}
-				else if ((int)distance < 5) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-				}
-				else if ((int)distance < 2) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-				}
-				else {
-					DrawString(std::string("Gunpowder Barrel » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-					{
-						DrawCircle(Screen.x, Screen.y, 3, 25, color);
-					}
-				}
-		}
-
-		//DAMNED KEY
-		else if (name.find("BP_FotD_StrongholdKey") != std::string::npos || name.find("BP_FotD_StrongholdKey_Proxy") != std::string::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-			Color color = { Vars.ESP.colorDKey[0],Vars.ESP.colorDKey[1],Vars.ESP.colorDKey[2],Vars.ESP.colorDKey[3] };
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if (Vars.ESP.MenuTake.ItemsOther || Vars.ESP.MenuTake.ItemsLegendary)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::string("Damned Key » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "medium");
-					}
-				}
-		}
-
-		// GEM
-		else if (Vars.ESP.MenuTake.ItemsRare && name.find("Gem") != std::wstring::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorRare[0],Vars.ESP.colorRare[1],Vars.ESP.colorRare[2],Vars.ESP.colorRare[3] };
-
-			if (name.find("Ruby") != std::string::npos)
-			{
-				Color color = Color{ Vars.ESP.MenuTake.Ruby[0], Vars.ESP.MenuTake.Ruby[1], Vars.ESP.MenuTake.Ruby[2], Vars.ESP.MenuTake.Ruby[3] };
-			}
-			else if (name.find("Emerald") != std::string::npos)
-			{
-				Color color = Color{ Vars.ESP.MenuTake.Emerald[0], Vars.ESP.MenuTake.Emerald[1], Vars.ESP.MenuTake.Emerald[2], Vars.ESP.MenuTake.Emerald[3] };
-			}
-			else if (name.find("Sapphire") != std::string::npos)
-			{
-				Color color = Color{ Vars.ESP.MenuTake.Sapphire[0], Vars.ESP.MenuTake.Sapphire[1], Vars.ESP.MenuTake.Sapphire[2], Vars.ESP.MenuTake.Sapphire[3] };
-			}
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if ((int)distance < 10) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-				}
-				else if ((int)distance < 5) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-				}
-				else if ((int)distance < 2) {
-					DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-				}
-				else {
-					DrawString(std::string("Marmaid Gem » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-					{
-						DrawCircle(Screen.x, Screen.y, 3, 25, color);
-					}
-				}
-		}
-
-		//CLOUD
+		
 		else if (name.find("BP_SkellyShip_ShipCloud") != std::string::npos)
 		{
+
+
+
+			if (!Vars.ESP.World.bFort)
+				continue;
+
 			auto pos = actor.GetRootComponent().GetPosition();
 			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
 
-			Color color = { Vars.ESP.colorWorld[0],Vars.ESP.colorWorld[1],Vars.ESP.colorWorld[2],Vars.ESP.colorWorld[3] };
-
+			Color color = { Vars.ESP.World.colorWorld[0],Vars.ESP.World.colorWorld[1],Vars.ESP.World.colorWorld[2],Vars.ESP.World.colorWorld[3] };
 
 			Vector2 Screen;
 			if (Misc->WorldToScreen(pos, &Screen))
-				if (Vars.ESP.MenuTake.EventsCloud)
-				{
-					if ((int)distance >= 1500)
-					{
-						DrawString(std::string("Ship Cloud » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-					else if ((int)distance < 1500) {
-						DrawString(std::string("Ship Cloud » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-					else if ((int)distance < 100) {
-						DrawString(std::string("Ship Cloud » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "mini");
-					}
-					else
-					{
-						DrawString(std::string("Ship Cloud » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-				}
+				DrawString(std::string("Ship Cloud [ " + std::to_string((int)distance) + "m ]").c_str(), Screen.x, Screen.y, color, true, "default");
+
 		}
 
-		//ASHEN SKULL / 2.0.17
-		else if (name.find("BP_AshenLord_SkullCloud_C") != std::string::npos)
+		else if (name.find("BP_SkellyFort_SkullCloud_C") != std::string::npos)
 		{
+			if (!Vars.ESP.World.bFort)
+				continue;
+
 			auto pos = actor.GetRootComponent().GetPosition();
 			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
 
-			Color color = { Vars.ESP.colorWorld[0],Vars.ESP.colorWorld[1],Vars.ESP.colorWorld[2],Vars.ESP.colorWorld[3] };
+			Color color = { Vars.ESP.World.colorWorld[0],Vars.ESP.World.colorWorld[1],Vars.ESP.World.colorWorld[2],Vars.ESP.World.colorWorld[3] };
 
 
 			Vector2 Screen;
 			if (Misc->WorldToScreen(pos, &Screen))
-				if (Vars.ESP.MenuTake.EventsFort)
-				{
-					if ((int)distance >= 1500)
-					{
-						DrawString(std::string("ASHEN SKULL » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-					else if ((int)distance < 1500) {
-						DrawString(std::string("ASHEN SKULL » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-					else if ((int)distance < 100) {
-						DrawString(std::string("ASHEN SKULL » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "mini");
-					}
-					else
-					{
-						DrawString(std::string("ASHEN SKULL » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-				}
+				DrawString(std::string("Skull Fort [ " + std::to_string((int)distance) + "m ]").c_str(), Screen.x, Screen.y, color, true, "default");
+
 		}
 
-		//FOTD
-		else if (name.find("RitualSkullCloud") != std::string::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
 
-			Color color = { Vars.ESP.colorWorld[0],Vars.ESP.colorWorld[1],Vars.ESP.colorWorld[2],Vars.ESP.colorWorld[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if (Vars.ESP.MenuTake.EventsFort)
-				{
-					if ((int)distance >= 1500)
-					{
-						DrawString(std::string("FOTD » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-					else if ((int)distance < 1500) {
-						DrawString(std::string("FOTD » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-					else if ((int)distance < 100) {
-						DrawString(std::string("FOTD » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "mini");
-					}
-					else
-					{
-						DrawString(std::string("FOTD » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-				}
-		}
-
-		//FORT
-		else if (name.find("SkullCloud") != std::string::npos && name.find("Ritual") == std::string::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorWorld[0],Vars.ESP.colorWorld[1],Vars.ESP.colorWorld[2],Vars.ESP.colorWorld[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if (Vars.ESP.MenuTake.EventsFort)
-				{
-					if ((int)distance >= 1500)
-					{
-						DrawString(std::string("Skull Fort » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-					else if ((int)distance < 1500) {
-						DrawString(std::string("Skull Fort » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-					else if ((int)distance < 100) {
-						DrawString(std::string("Skull Fort » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "mini");
-					}
-					else
-					{
-						DrawString(std::string("Skull Fort » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-				}
-		}
-
-		//MAP PINS & REAPERS CHEST
 		else if (name.find("MapTable_C") != std::string::npos)
 		{
 			auto Table = *reinterpret_cast<AMapTable*>(&actors[i]);
@@ -1025,39 +249,27 @@ void cCheat::readData()
 					auto Chest = Chests[p];
 					Vector2 Screen;
 
-					Color color = { Vars.ESP.colorSpecial[0],Vars.ESP.colorSpecial[1],Vars.ESP.colorSpecial[2],Vars.ESP.colorSpecial[3] };
+					Color color = { Vars.ESP.World.colorWorld[0],Vars.ESP.World.colorWorld[1],Vars.ESP.World.colorWorld[2],Vars.ESP.World.colorWorld[3] };
 
 					int dist = (int)(SOT->localPlayer.position.DistTo(Chest) / 100.f);
 
-					if (Misc->WorldToScreen(Chest, &Screen))
-						if (Vars.ESP.MenuTake.EventsReapers || Vars.ESP.MenuTake.ItemsLegendary)
-						{
-							if (dist < 10) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-							}
-							else if (dist < 5) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-							}
-							else if (dist < 2) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-							}
-							else {
-								DrawString(std::string("Reapers Chest » " + std::to_string(dist) + "m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-								if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-								{
-									DrawCircle(Screen.x, Screen.y, 3, 25, color);
-								}
-							}
-						}
+					if (dist > 150)
+					{
+						if (Misc->WorldToScreen(Chest, &Screen))
+							DrawString(std::string("Reapers Chest [" + std::to_string(dist) + "m] ").c_str(), Screen.x, Screen.y, color, true, "default");
+					}
 				}
 			}
+
+			if (!Vars.ESP.World.bMapPins)
+				continue;
 
 			auto pins = Table.GetMapPins();
 
 			if (!pins.IsValid())
 				continue;
 		
-			Color color = { Vars.ESP.colorPins[0],Vars.ESP.colorPins[1],Vars.ESP.colorPins[2],Vars.ESP.colorPins[3] };
+			Color color = { Vars.ESP.World.colorWorld[0],Vars.ESP.World.colorWorld[1],Vars.ESP.World.colorWorld[2],Vars.ESP.World.colorWorld[3] };
 
 			for (int p = 0; p < pins.Length(); ++p)
 			{
@@ -1067,14 +279,12 @@ void cCheat::readData()
 
 				Vector2 Screen;
 				if (Misc->WorldToScreen(worldPin, &Screen))
-					if (Vars.ESP.MenuTake.MapPins)
-					{
-						DrawString(std::string("» " + std::to_string((int)(SOT->localPlayer.position.DistTo(worldPin) / 100.f)) + "m «").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
+					DrawString(std::string("PIN [" + std::to_string((int)(SOT->localPlayer.position.DistTo(worldPin) / 100.f)) + "m] ").c_str(), Screen.x, Screen.y, color, true, "default");
+
 			}
+
 		}
 
-		//PLAYER LIST
 		else if (name.find("CrewService") != std::string::npos)
 		{
 			Crews.clear();
@@ -1104,7 +314,7 @@ void cCheat::readData()
 				else if (SOT->Ships[c].type.find("golden") != std::string::npos)
 					tempTeam.color = Color(255, 255, 0);
 				else
-					tempTeam.color = Color(255, 255, 0);
+					tempTeam.color = Color(255, 255, 255);
 
 				SOT->Ships[c].crewID = crews[c].GetCrewID();
 
@@ -1125,9 +335,11 @@ void cCheat::readData()
 
 		}
 
-		//PLAYERS
 		else if (name.find("BP_PlayerPirate_C") != std::string::npos)
 		{
+			if (!Vars.ESP.Player.bActive)
+				continue;
+
 			auto pos = actor.GetRootComponent().GetPosition();
 			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
 
@@ -1143,7 +355,7 @@ void cCheat::readData()
 				Vector3 headPos = Vector3(pos.x, pos.y, pos.z + 100);
 
 				Vector2 ScreenTop;
-				Color boxColor = { Vars.ESP.MenuTake.EnemyColor[0],Vars.ESP.MenuTake.EnemyColor[1],Vars.ESP.MenuTake.EnemyColor[2],Vars.ESP.MenuTake.EnemyColor[3] };
+				Color boxColor = { Vars.ESP.Player.colorEnemy[0],Vars.ESP.Player.colorEnemy[1],Vars.ESP.Player.colorEnemy[2],Vars.ESP.Player.colorEnemy[3] };
 				bool bTeammate = false;
 
 				if (Misc->WorldToScreen(headPos, &ScreenTop))
@@ -1160,45 +372,45 @@ void cCheat::readData()
 
 						if (pirateName == SOT->Pirates[pirates].name)
 						{
+
 							SOT->Pirates[pirates].distance = distance;
 							if (SOT->Pirates[pirates].crewID == SOT->localPlayer.crewID)
 							{
-								boxColor = Color{ Vars.ESP.MenuTake.AllyColor[0],Vars.ESP.MenuTake.AllyColor[1],Vars.ESP.MenuTake.AllyColor[2],Vars.ESP.MenuTake.AllyColor[3] };
+								boxColor = Color{ Vars.ESP.Player.colorTeam[0],Vars.ESP.Player.colorTeam[1],Vars.ESP.Player.colorTeam[2],Vars.ESP.Player.colorTeam[3] };
 								bTeammate = true;
-								if (Vars.ESP.MenuTake.PlayerAlly)
-								{
-									DrawBox(ScreenTop.x - wi / 2, ScreenTop.y, wi, hi, boxColor);
-								}
 							}
 						}
 					}
 
-					if (Vars.ESP.MenuTake.PlayerEnemy)
-					{
-						DrawBox(ScreenTop.x - wi / 2, ScreenTop.y, wi, hi, boxColor);
-					}
+					if (!Vars.ESP.Player.bTeam && bTeammate)
+						continue;
 
-					if (Vars.ESP.MenuTake.PlayerName)
-						DrawString(std::string(pirateName + " » " + std::to_string((int)distance) + "m").c_str(), ScreenTop.x, ScreenTop.y - 14, boxColor, true, "small");
-					if (Vars.ESP.MenuTake.PlayerItem)
-					{
-						if (ItemName.length() < 32)
-							DrawString(ItemName.c_str(), ScreenTop.x, ScreenTop.y + hi, Color{ 255,255,255 }, true, "small");
-					}
-					if (Vars.ESP.MenuTake.PlayerHPBar)
-					{
-						float maxHealth = actor.GetHealthComponent().GetMaxHealth();
-						DrawHealthBar(health, maxHealth, ScreenTop.x, ScreenTop.y + 1, wi, hi);
-					}
+						DrawBox(ScreenTop.x - wi / 2, ScreenTop.y, wi, hi, boxColor);
+						if (Vars.ESP.Player.bName)
+							DrawString(std::string(pirateName + " [ " + std::to_string((int)distance) + "m ]").c_str(), ScreenTop.x, ScreenTop.y - 14, Color{ 255,255,255 }, true, "small");
+						if (Vars.ESP.Player.bWeapon)
+						{
+							if (ItemName.length() < 32)
+								DrawString(ItemName.c_str(), ScreenTop.x, ScreenTop.y + hi, Color{ 255,255,255 }, true, "small");
+						}
+						if (Vars.ESP.Player.bHealth)
+						{
+							float maxHealth = actor.GetHealthComponent().GetMaxHealth();
+							DrawHealthBar(health, maxHealth, ScreenTop.x, ScreenTop.y + 1, wi, hi);
+						}
 					
 					
 				}
 			}
 		}
 
-		//SLOOP
+#ifndef Ships
+
 		else if (name.find("BP_SmallShipTemplate_C") != std::string::npos || name.find("BP_SmallShipNetProxy") != std::string::npos)
 		{
+		if (!Vars.ESP.Ships.bActive)
+			continue;
+
 			auto pos = actor.GetRootComponent().GetPosition();
 			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
 
@@ -1213,742 +425,193 @@ void cCheat::readData()
 
 				crewid = FGuid();
 			}
+				
+			Color color = { Vars.ESP.Ships.colorEnemy[0],Vars.ESP.Ships.colorEnemy[1],Vars.ESP.Ships.colorEnemy[2],Vars.ESP.Ships.colorEnemy[3] };
 
-			Color color = { Vars.ESP.MenuTake.EnemyColor[0],Vars.ESP.MenuTake.EnemyColor[1],Vars.ESP.MenuTake.EnemyColor[2],Vars.ESP.MenuTake.EnemyColor[3] };
+
+			
 
 			if (SOT->localPlayer.crewID == crewid)
 			{
-				color = { Vars.ESP.MenuTake.AllyColor[0],Vars.ESP.MenuTake.AllyColor[1],Vars.ESP.MenuTake.AllyColor[2],Vars.ESP.MenuTake.AllyColor[3] };
+				color = { Vars.ESP.Ships.colorTeam[0],Vars.ESP.Ships.colorTeam[1],Vars.ESP.Ships.colorTeam[2],Vars.ESP.Ships.colorTeam[3] };
 			}
-
 			Vector2 Screen;
 			if (Misc->WorldToScreen(Vector3(pos.x,pos.y,pos.z + 2000), &Screen))
-				if ((int)distance >= 1500 & SOT->localPlayer.crewID != crewid & Vars.ESP.MenuTake.ShipsEnemy)
-				{
-					DrawString(std::string("Sloop » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-				}
-				else if ((int)distance < 1500 & SOT->localPlayer.crewID != crewid & Vars.ESP.MenuTake.ShipsEnemy) {
-					DrawString(std::string("Sloop » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "medium");
-				}
-				else if ((int)distance < 50 & SOT->localPlayer.crewID != crewid & Vars.ESP.MenuTake.ShipsEnemy) {
-					DrawString(std::string("Sloop » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "mini");
-				}
-				else if (SOT->localPlayer.crewID == crewid & Vars.ESP.MenuTake.ShipsAlly) {
-					DrawString(std::string("Own Sloop » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-				}
+				DrawString(std::string("Sloop [ " + std::to_string((int)distance) + "m ]").c_str() , Screen.x, Screen.y, color, true, "default");
 		}
 
-		//BRIGANTINE
 		else if (name.find("BP_MediumShipTemplate_C") != std::string::npos || name.find("BP_MediumShipNetProxy") != std::string::npos)
 		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
+		if (!Vars.ESP.Ships.bActive)
+			continue;
+		auto pos = actor.GetRootComponent().GetPosition();
+		auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
 
 			auto Ship = *reinterpret_cast<AShip*>(&actors[i]);
 
-			FGuid crewid = Ship.GetCrewOwnershipComponent().GetCrewId();
-
 			if (name.find("NetProxy") != std::string::npos)
-			{
 				if (Ship.GetOwningActor())
 					continue;
 
-				crewid = FGuid();
-			}
 
-			Color color = { Vars.ESP.MenuTake.EnemyColor[0],Vars.ESP.MenuTake.EnemyColor[1],Vars.ESP.MenuTake.EnemyColor[2],Vars.ESP.MenuTake.EnemyColor[3] };
+			Color color = { Vars.ESP.Ships.colorEnemy[0],Vars.ESP.Ships.colorEnemy[1],Vars.ESP.Ships.colorEnemy[2],Vars.ESP.Ships.colorEnemy[3] };
 
-			if (SOT->localPlayer.crewID == crewid)
-			{
-				color = { Vars.ESP.MenuTake.AllyColor[0],Vars.ESP.MenuTake.AllyColor[1],Vars.ESP.MenuTake.AllyColor[2],Vars.ESP.MenuTake.AllyColor[3] };
-			}
+			if (SOT->localPlayer.crewID == Ship.GetCrewOwnershipComponent().GetCrewId())
+				color = { Vars.ESP.Ships.colorTeam[0],Vars.ESP.Ships.colorTeam[1],Vars.ESP.Ships.colorTeam[2],Vars.ESP.Ships.colorTeam[3] };
+
 
 			Vector2 Screen;
 			if (Misc->WorldToScreen(Vector3(pos.x, pos.y, pos.z + 2000), &Screen))
-				if ((int)distance >= 1500 & SOT->localPlayer.crewID != crewid & Vars.ESP.MenuTake.ShipsEnemy)
-				{
-					DrawString(std::string("Brigantine » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-				}
-				else if ((int)distance < 1500 & SOT->localPlayer.crewID != crewid & Vars.ESP.MenuTake.ShipsEnemy) {
-					DrawString(std::string("Brigantine » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "medium");
-				}
-				else if ((int)distance < 50 & SOT->localPlayer.crewID != crewid & Vars.ESP.MenuTake.ShipsEnemy) {
-					DrawString(std::string("Brigantine » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "mini");
-				}
-				else if (SOT->localPlayer.crewID == crewid & Vars.ESP.MenuTake.ShipsAlly) {
-					DrawString(std::string("Own Brigantine » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-				}
+				DrawString(std::string("Brigantine [ " + std::to_string((int)distance) + "m ]").c_str(), Screen.x, Screen.y, color, true, "default");
 		}
-		//GALLEON
+
 		else if (name.find("BP_LargeShipTemplate_C") != std::string::npos || name.find("BP_LargeShipNetProxy") != std::string::npos)
 		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
+		if (!Vars.ESP.Ships.bActive)
+			continue;
+
+
+		auto pos = actor.GetRootComponent().GetPosition();
+		auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
 
 			auto Ship = *reinterpret_cast<AShip*>(&actors[i]);
 
-			FGuid crewid = Ship.GetCrewOwnershipComponent().GetCrewId();
-
-			if (name.find("NetProxy") != std::string::npos)
-			{
-				if (Ship.GetOwningActor())
-					continue;
-
-				crewid = FGuid();
-			}
-
-			Color color = { Vars.ESP.MenuTake.EnemyColor[0],Vars.ESP.MenuTake.EnemyColor[1],Vars.ESP.MenuTake.EnemyColor[2],Vars.ESP.MenuTake.EnemyColor[3] };
-
-			if (SOT->localPlayer.crewID == crewid)
-			{
-				color = { Vars.ESP.MenuTake.AllyColor[0],Vars.ESP.MenuTake.AllyColor[1],Vars.ESP.MenuTake.AllyColor[2],Vars.ESP.MenuTake.AllyColor[3] };
-			}
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(Vector3(pos.x, pos.y, pos.z + 2000), &Screen))
-				if ((int)distance >= 1500 & SOT->localPlayer.crewID != crewid & Vars.ESP.MenuTake.ShipsEnemy)
-				{
-					DrawString(std::string("Galleon » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-				}
-				else if ((int)distance < 1500 & SOT->localPlayer.crewID != crewid & Vars.ESP.MenuTake.ShipsEnemy) {
-					DrawString(std::string("Galleon » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "medium");
-				}
-				else if ((int)distance < 50 & SOT->localPlayer.crewID != crewid & Vars.ESP.MenuTake.ShipsEnemy) {
-					DrawString(std::string("Galleon » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "mini");
-				}
-				else if (SOT->localPlayer.crewID == crewid & Vars.ESP.MenuTake.ShipsAlly) {
-					DrawString(std::string("Own Galleon » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-				}
-		}
-
-		//ROWBOAT
-		else if (name.find("BP_Rowboat_C") != std::string::npos || name.find("BP_RowboatRowingSeat_C") != std::string::npos || name.find("BP_Rowboat_WithFrontHarpoon_C") != std::string::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			auto Ship = *reinterpret_cast<AShip*>(&actors[i]);
-
-			Color color = { Vars.ESP.colorCommon[0],Vars.ESP.colorCommon[1],Vars.ESP.colorCommon[2],Vars.ESP.colorCommon[3] };
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(Vector3(pos.x, pos.y, pos.z + 2000), &Screen))
-				if (Vars.ESP.MenuTake.ShipsRowboat)
-				{
-					DrawString(std::string("Rowboat » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-				}
-		}
-
-		//HAUNTED SHORES
-		//ty throwaway666
-		else if (name.find("BP_GhostShips_Signal_Flameheart_NetProxy_C") != std::string::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-			Color color = { Vars.ESP.colorGhostShip[0],Vars.ESP.colorGhostShip[1],Vars.ESP.colorGhostShip[2],Vars.ESP.colorGhostShip[3] };
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(Vector3(pos.x, pos.y, pos.z + 2000), &Screen))
-				if (Vars.ESP.MenuTake.ShipsGhost) // you can make your own var to handle this
-				{
-					if ((int)distance >= 1500)
-					{
-						DrawString(std::string("Flameheart » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-					else if ((int)distance < 1500) {
-						DrawString(std::string("Flameheart » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "medium");
-					}
-					else if ((int)distance < 50) {
-						DrawString(std::string("Flameheart » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "mini");
-					}
-					else
-					{
-						DrawString(std::string("Flameheart » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-				}
-		}
-
-		//GHOST SHIP
-		//ty throwaway666
-		else if (name.find("BP_AggressiveGhostShip_C") != std::string::npos)
-		{
- 
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-			auto Ship = *reinterpret_cast<AShip*>(&actors[i]);
- 
 			if (name.find("NetProxy") != std::string::npos)
 				if (Ship.GetOwningActor())
 					continue;
-			Color color = { Vars.ESP.colorGhostShip[0],Vars.ESP.colorGhostShip[1],Vars.ESP.colorGhostShip[2],Vars.ESP.colorGhostShip[3] };
+
+			Color color = { Vars.ESP.Ships.colorEnemy[0],Vars.ESP.Ships.colorEnemy[1],Vars.ESP.Ships.colorEnemy[2],Vars.ESP.Ships.colorEnemy[3] };
+
+			if (SOT->localPlayer.crewID == Ship.GetCrewOwnershipComponent().GetCrewId())
+				color = { Vars.ESP.Ships.colorTeam[0],Vars.ESP.Ships.colorTeam[1],Vars.ESP.Ships.colorTeam[2],Vars.ESP.Ships.colorTeam[3] };
+
 
 			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if (Vars.ESP.MenuTake.ShipsGhost) // you can make your own var to handle this
-				{
-					if ((int)distance >= 1500)
-					{
-						DrawString(std::string("Ghost Ship » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-					else if ((int)distance < 1500) {
-						DrawString(std::string("Ghost Ship » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "medium");
-					}
-					else if ((int)distance < 50) {
-						DrawString(std::string("Ghost Ship » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "mini");
-					}
-					else
-					{
-						DrawString(std::string("Ghost Ship » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-				}
+			if (Misc->WorldToScreen(Vector3(pos.x, pos.y, pos.z + 2000), &Screen))
+				DrawString(std::string("Galleon [ " + std::to_string((int)distance) + "m ]").c_str(), Screen.x, Screen.y, color, true, "default");
 		}
-
-		//GHOST SHIP MINE
-		//ty throwaway666
-		else if (name.find("BP_AggressiveGhostShip_Mine_C") != std::string::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-			Color color = { Vars.ESP.colorGhostShip[0],Vars.ESP.colorGhostShip[1],Vars.ESP.colorGhostShip[2],Vars.ESP.colorGhostShip[3] };
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if (Vars.ESP.MenuTake.ShipsGhost) // you can make your own var to handle this
-				{
-					if ((int)distance >= 1500)
-					{
-						DrawString(std::string("Ghost Ship (Mine) » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-					else if ((int)distance < 1500) {
-						DrawString(std::string("Ghost Ship (Mine) » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "medium");
-					}
-					else if ((int)distance < 50) {
-						DrawString(std::string("Ghost Ship (Mine) » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "mini");
-					}
-					else
-					{
-						DrawString(std::string("Ghost Ship (Mine) » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-				}
-		}
-
-		//GHOST SHIP REWARD
-		//ty throwaway666
-		else if (name.find("BP_GhostShipRewardMarker_C") != std::string::npos)
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-			Color color = { Vars.ESP.colorGhostShip[0],Vars.ESP.colorGhostShip[1],Vars.ESP.colorGhostShip[2],Vars.ESP.colorGhostShip[3] };
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if (Vars.ESP.MenuTake.ShipsGhost) // you can make your own var to handle this
-				{
-					if ((int)distance >= 1500)
-					{
-						DrawString(std::string("Ghost Ship (Reward) » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-					else if ((int)distance < 1500) {
-						DrawString(std::string("Ghost Ship (Reward) » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "medium");
-					}
-					else if ((int)distance < 50) {
-						DrawString(std::string("Ghost Ship (Reward) » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "mini");
-					}
-					else
-					{
-						DrawString(std::string("Ghost Ship (Reward) » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-				}
-		}
-		//
-
-		//GHOST SLOOP
+	
 		else if (name.find("BP_AISmallShipTemplate") != std::string::npos || name.find("BP_AISmallShipNetProxy") != std::string::npos)
 		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
+		if (!Vars.ESP.Ships.bActive)
+			continue;
+		auto pos = actor.GetRootComponent().GetPosition();
+		auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
 
-			auto Ship = *reinterpret_cast<AShip*>(&actors[i]);
+		auto Ship = *reinterpret_cast<AShip*>(&actors[i]);
 
-			if (name.find("NetProxy") != std::string::npos)
-			{
-				if (Ship.GetOwningActor())
-					continue;
-			}
-			Color color = { Vars.ESP.colorGhostShip[0],Vars.ESP.colorGhostShip[1],Vars.ESP.colorGhostShip[2],Vars.ESP.colorGhostShip[3] };
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(Vector3(pos.x, pos.y, pos.z + 2000), &Screen))
-				if (Vars.ESP.MenuTake.ShipsGhost)
-				{
-					if ((int)distance >= 1500)
-					{
-						DrawString(std::string("Ghost Sloop » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-					else if ((int)distance < 1500) {
-						DrawString(std::string("Ghost Sloop » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "medium");
-					}
-					else if ((int)distance < 50) {
-						DrawString(std::string("Ghost Sloop » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "mini");
-					}
-					else
-					{
-						DrawString(std::string("Ghost Sloop » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-				}
+		if (name.find("NetProxy") != std::string::npos)
+		{
+			if (Ship.GetOwningActor())
+				continue;
 		}
-		//GHOST GALLEON
+
+		Color color = { Vars.ESP.World.colorWorld[0],Vars.ESP.World.colorWorld[1],Vars.ESP.World.colorWorld[2],Vars.ESP.World.colorWorld[3] };
+
+		Vector2 Screen;
+		if (Misc->WorldToScreen(Vector3(pos.x, pos.y, pos.z + 2000), &Screen))
+			DrawString(std::string("Skeleton Sloop [ " + std::to_string((int)distance) + "m ]").c_str(), Screen.x, Screen.y, color, true, "default");
+		}
 		else if (name.find("BP_AILargeShipTemplate") != std::string::npos || name.find("BP_AILargeShipNetProxy") != std::string::npos)
 		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
+		if (!Vars.ESP.Ships.bActive)
+			continue;
+		auto pos = actor.GetRootComponent().GetPosition();
+		auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
 
-			auto Ship = *reinterpret_cast<AShip*>(&actors[i]);
+		auto Ship = *reinterpret_cast<AShip*>(&actors[i]);
 
-			if (name.find("NetProxy") != std::string::npos)
-			{
-				if (Ship.GetOwningActor())
-					continue;
-			}
-			Color color = { Vars.ESP.colorGhostShip[0],Vars.ESP.colorGhostShip[1],Vars.ESP.colorGhostShip[2],Vars.ESP.colorGhostShip[3] };
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(Vector3(pos.x, pos.y, pos.z + 2000), &Screen))
-				if (Vars.ESP.MenuTake.ShipsGhost)
-				{
-					if ((int)distance >= 1500)
-					{
-						DrawString(std::string("Ghost Galleon » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-					else if ((int)distance < 1500) {
-						DrawString(std::string("Ghost Galleon » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "medium");
-					}
-					else if ((int)distance < 50) {
-						DrawString(std::string("Ghost Galleon » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "mini");
-					}
-					else
-					{
-						DrawString(std::string("Ghost Galleon » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-				}
+		if (name.find("NetProxy") != std::string::npos)
+		{
+			if (Ship.GetOwningActor())
+				continue;
 		}
 
-		//SHIP WRECK
+		Color color = { Vars.ESP.World.colorWorld[0],Vars.ESP.World.colorWorld[1],Vars.ESP.World.colorWorld[2],Vars.ESP.World.colorWorld[3] };
+
+		Vector2 Screen;
+		if (Misc->WorldToScreen(Vector3(pos.x, pos.y, pos.z + 2000), &Screen))
+			DrawString(std::string("Skeleton Galleon [ " + std::to_string((int)distance) + "m ]").c_str(), Screen.x, Screen.y, color, true, "default");
+		}
+
+#endif // !Ships
 		else if (name.find("BP_Shipwreck_") != std::string::npos)
 		{
 
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
+		if (!Vars.ESP.World.bShipWreck)
+			continue;
 
-			Color color = { Vars.ESP.MenuTake.ObjectsColor[0],Vars.ESP.MenuTake.ObjectsColor[1],Vars.ESP.MenuTake.ObjectsColor[2],Vars.ESP.MenuTake.ObjectsColor[3] };
+		auto pos = actor.GetRootComponent().GetPosition();
+		auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
+
+		Color color = { Vars.ESP.World.colorWorld[0],Vars.ESP.World.colorWorld[1],Vars.ESP.World.colorWorld[2],Vars.ESP.World.colorWorld[3] };
 
 
-			Vector2 Screen;
-			if (Misc->WorldToScreen(Vector3(pos.x, pos.y, 2000), &Screen))
-				if (Vars.ESP.MenuTake.ObjectsWrecks)
-				{
-					if ((int)distance >= 1500)
-					{
-						DrawString(std::string("Ship Wreck » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-					else if ((int)distance < 1500) {
-						DrawString(std::string("Ship Wreck » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "medium");
-					}
-					else if ((int)distance < 50) {
-						DrawString(std::string("Ship Wreck » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "mini");
-					}
-					else
-					{
-						DrawString(std::string("Ship Wreck » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-				}
+		Vector2 Screen;
+		if (Misc->WorldToScreen(Vector3(pos.x, pos.y, 2000), &Screen))
+			DrawString(std::string("ShipWreck [ " + std::to_string((int)distance) + "m ]").c_str(), Screen.x, Screen.y, color, true, "default");
 		}
 
-		//DEBUG
-		else if (name.find("") != std::string::npos)
-			{
-			if (!Vars.ESP.MenuTake.Debug)
-				continue;
-
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.colorWorld[0],Vars.ESP.colorWorld[1],Vars.ESP.colorWorld[2],Vars.ESP.colorWorld[3] };
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				DrawString((name).c_str(), Screen.x, Screen.y, color, true, "small");
-			}
-
-		//SIREN
-		else if (name.find("BP_Mermaid_C") != std::string::npos)
-		{
-
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			Color color = { Vars.ESP.MenuTake.ObjectsColor[0],Vars.ESP.MenuTake.ObjectsColor[1],Vars.ESP.MenuTake.ObjectsColor[2],Vars.ESP.MenuTake.ObjectsColor[3] };
-
-
-			Vector2 Screen;
-			if (Misc->WorldToScreen(pos, &Screen))
-				if (Vars.ESP.MenuTake.ObjectsSiren)
-				{
-					DrawString(std::string("Siren » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-				}
-		}
-
-		//STATUES
 		else if (name.find("BP_SunkenCurseArtefact_") != std::string::npos)
 		{
-			if (Vars.ESP.MenuTake.ObjectsStatues)
+		auto pos = actor.GetRootComponent().GetPosition();
+		auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
+
+			Vector2 Screen;
+			if (Misc->WorldToScreen(Vector3(pos.x, pos.y, pos.z), &Screen))
 			{
-				auto pos = actor.GetRootComponent().GetPosition();
-				auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-				Color color = Color{ Vars.ESP.colorWorld[0], Vars.ESP.colorWorld[1], Vars.ESP.colorWorld[2], Vars.ESP.colorWorld[3] };
-
 				if (name.find("Ruby") != std::string::npos)
 				{
-					Color color = Color{ Vars.ESP.MenuTake.Ruby[0], Vars.ESP.MenuTake.Ruby[1], Vars.ESP.MenuTake.Ruby[2], Vars.ESP.MenuTake.Ruby[3] };
+					DrawString(std::string("Ruby Statue [ " + std::to_string((int)distance) + "m ]").c_str(), Screen.x, Screen.y, Color{ 255,0,0 }, true, "default");
 				}
 				else if (name.find("Emerald") != std::string::npos)
 				{
-					Color color = Color{ Vars.ESP.MenuTake.Emerald[0], Vars.ESP.MenuTake.Emerald[1], Vars.ESP.MenuTake.Emerald[2], Vars.ESP.MenuTake.Emerald[3] };
+					DrawString(std::string("Emerald Statue [ " + std::to_string((int)distance) + "m ]").c_str(), Screen.x, Screen.y, Color{ 0,255,0 }, true, "default");
 				}
 				else if (name.find("Sapphire") != std::string::npos)
 				{
-					Color color = Color{ Vars.ESP.MenuTake.Sapphire[0], Vars.ESP.MenuTake.Sapphire[1], Vars.ESP.MenuTake.Sapphire[2], Vars.ESP.MenuTake.Sapphire[3] };
-				}
-
-				Vector2 Screen;
-				if (Misc->WorldToScreen(Vector3(pos.x, pos.y, pos.z), &Screen))
-				{
-					if ((int)distance >= 150)
-					{
-						DrawString(std::string("Marmaid Statue » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "small");
-					}
-					else if ((int)distance < 150) {
-						DrawString(std::string("Marmaid Statue » " + std::to_string((int)distance) + "m").c_str(), Screen.x, Screen.y, color, true, "medium");
-					}
-					else if ((int)distance < 10 && (int)distance > 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
+					DrawString(std::string("Sapphire Statue [ " + std::to_string((int)distance) + "m ]").c_str(), Screen.x, Screen.y, Color{ 0,0,255 }, true, "default");
 				}
 			}
 		}
-		
-		//CHICKEN
-		else if ((name.find("BP_Chicken_") != std::string::npos))
+
+		else if ((name.find("BP_Pig_") != std::string::npos && Vars.ESP.Animals.bPig) || (name.find("BP_Snake_") != std::string::npos && Vars.ESP.Animals.bSnake) || (name.find("BP_Chicken_") != std::string::npos && Vars.ESP.Animals.bChicken))
 		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
+		if (!Vars.ESP.Animals.bActive)
+			continue;
 
-			auto Fauna = *reinterpret_cast<AFauna*>(&actors[i]);
+		auto pos = actor.GetRootComponent().GetPosition();
+		auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
 
-			Color color = Color{ Vars.ESP.colorOther[0], Vars.ESP.colorOther[1], Vars.ESP.colorOther[2], Vars.ESP.colorOther[3] };
+		auto Fauna = *reinterpret_cast<AFauna*>(&actors[i]);
 
-			if (name.find("Common") != std::wstring::npos)
-				color = Color{ Vars.ESP.colorCommon[0], Vars.ESP.colorCommon[1], Vars.ESP.colorCommon[2], Vars.ESP.colorCommon[3] };
+		Color color = Color{ Vars.ESP.colorOther[0], Vars.ESP.colorOther[1], Vars.ESP.colorOther[2], Vars.ESP.colorOther[3] };
 
-			else if (name.find("Rare") != std::wstring::npos)
-				color = Color{ Vars.ESP.colorRare[0], Vars.ESP.colorRare[1], Vars.ESP.colorRare[2], Vars.ESP.colorRare[3] };
+		if (name.find("Common") != std::wstring::npos)
+			color = Color{ Vars.ESP.colorCommon[0], Vars.ESP.colorCommon[1], Vars.ESP.colorCommon[2], Vars.ESP.colorCommon[3] };
 
-			else if (name.find("Mythical") != std::wstring::npos)
-				color = Color{ Vars.ESP.colorMythical[0], Vars.ESP.colorMythical[1], Vars.ESP.colorMythical[2], Vars.ESP.colorMythical[3] };
+		else if (name.find("Rare") != std::wstring::npos)
+			color = Color{ Vars.ESP.colorRare[0], Vars.ESP.colorRare[1], Vars.ESP.colorRare[2], Vars.ESP.colorRare[3] };
 
-			else if (name.find("Legendary") != std::wstring::npos)
-				color = Color{ Vars.ESP.colorLegendary[0], Vars.ESP.colorLegendary[1], Vars.ESP.colorLegendary[2], Vars.ESP.colorLegendary[3] };
+		else if (name.find("Mythical") != std::wstring::npos)
+			color = Color{ Vars.ESP.colorMythical[0], Vars.ESP.colorMythical[1], Vars.ESP.colorMythical[2], Vars.ESP.colorMythical[3] };
 
-			Vector2 Screen;
+		else if (name.find("Legendary") != std::wstring::npos)
+			color = Color{ Vars.ESP.colorLegendary[0], Vars.ESP.colorLegendary[1], Vars.ESP.colorLegendary[2], Vars.ESP.colorLegendary[3] };
 
-			if (Misc->WorldToScreen(pos, &Screen))
-				if (Vars.ESP.MenuTake.AnimalsChickens)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::wstring(Fauna.GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					}
-				}
-				else if (Vars.ESP.MenuTake.AnimalsCommon & name.find("Common") != std::wstring::npos)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::wstring(Fauna.GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					}
-				}
-				else if (Vars.ESP.MenuTake.AnimalsRare & name.find("Rare") != std::wstring::npos)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::wstring(Fauna.GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					}
-				}
-				else if (Vars.ESP.MenuTake.AnimalsMythical & name.find("Mythical") != std::wstring::npos)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::wstring(Fauna.GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					}
-				}
-				else if (Vars.ESP.MenuTake.AnimalsLegendary & name.find("Legendary") != std::wstring::npos)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::wstring(Fauna.GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					}
-				}
+
+		Vector2 Screen;
+		if (Misc->WorldToScreen(pos, &Screen))
+			DrawString(std::wstring(Fauna.GetName() + L" [ " + std::to_wstring((int)distance) + L"m ] ").c_str(), Screen.x, Screen.y, color, true, "default");
+
 		}
 
-		//SNAKE
-		else if ((name.find("BP_Snake_") != std::string::npos))
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			auto Fauna = *reinterpret_cast<AFauna*>(&actors[i]);
-
-			Color color = Color{ Vars.ESP.colorOther[0], Vars.ESP.colorOther[1], Vars.ESP.colorOther[2], Vars.ESP.colorOther[3] };
-
-			if (name.find("Common") != std::wstring::npos)
-				color = Color{ Vars.ESP.colorCommon[0], Vars.ESP.colorCommon[1], Vars.ESP.colorCommon[2], Vars.ESP.colorCommon[3] };
-
-			else if (name.find("Rare") != std::wstring::npos)
-				color = Color{ Vars.ESP.colorRare[0], Vars.ESP.colorRare[1], Vars.ESP.colorRare[2], Vars.ESP.colorRare[3] };
-
-			else if (name.find("Mythical") != std::wstring::npos)
-				color = Color{ Vars.ESP.colorMythical[0], Vars.ESP.colorMythical[1], Vars.ESP.colorMythical[2], Vars.ESP.colorMythical[3] };
-
-			else if (name.find("Legendary") != std::wstring::npos)
-				color = Color{ Vars.ESP.colorLegendary[0], Vars.ESP.colorLegendary[1], Vars.ESP.colorLegendary[2], Vars.ESP.colorLegendary[3] };
-
-			Vector2 Screen;
-
-			if (Misc->WorldToScreen(pos, &Screen))
-				if (Vars.ESP.MenuTake.AnimalsSnakes)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::wstring(Fauna.GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					}
-				}
-				else if (Vars.ESP.MenuTake.AnimalsCommon & name.find("Common") != std::wstring::npos)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::wstring(Fauna.GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					}
-				}
-				else if (Vars.ESP.MenuTake.AnimalsRare & name.find("Rare") != std::wstring::npos)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::wstring(Fauna.GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					}
-				}
-				else if (Vars.ESP.MenuTake.AnimalsMythical & name.find("Mythical") != std::wstring::npos)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::wstring(Fauna.GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					}
-				}
-				else if (Vars.ESP.MenuTake.AnimalsLegendary & name.find("Legendary") != std::wstring::npos)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::wstring(Fauna.GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					}
-				}
-		}
-
-		//PIG
-		else if ((name.find("BP_Pig_") != std::string::npos))
-		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
-
-			auto Fauna = *reinterpret_cast<AFauna*>(&actors[i]);
-
-			Color color = Color{ Vars.ESP.colorOther[0], Vars.ESP.colorOther[1], Vars.ESP.colorOther[2], Vars.ESP.colorOther[3] };
-
-			if (name.find("Common") != std::wstring::npos)
-				color = Color{ Vars.ESP.colorCommon[0], Vars.ESP.colorCommon[1], Vars.ESP.colorCommon[2], Vars.ESP.colorCommon[3] };
-
-			else if (name.find("Rare") != std::wstring::npos)
-				color = Color{ Vars.ESP.colorRare[0], Vars.ESP.colorRare[1], Vars.ESP.colorRare[2], Vars.ESP.colorRare[3] };
-
-			else if (name.find("Mythical") != std::wstring::npos)
-				color = Color{ Vars.ESP.colorMythical[0], Vars.ESP.colorMythical[1], Vars.ESP.colorMythical[2], Vars.ESP.colorMythical[3] };
-
-			else if (name.find("Legendary") != std::wstring::npos)
-				color = Color{ Vars.ESP.colorLegendary[0], Vars.ESP.colorLegendary[1], Vars.ESP.colorLegendary[2], Vars.ESP.colorLegendary[3] };
-
-			Vector2 Screen;
-
-			if (Misc->WorldToScreen(pos, &Screen))
-				if (Vars.ESP.MenuTake.AnimalsPigs)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::wstring(Fauna.GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					}
-				}
-				else if (Vars.ESP.MenuTake.AnimalsCommon & name.find("Common") != std::wstring::npos)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::wstring(Fauna.GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					}
-				}
-				else if (Vars.ESP.MenuTake.AnimalsRare & name.find("Rare") != std::wstring::npos)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::wstring(Fauna.GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					}
-				}
-				else if (Vars.ESP.MenuTake.AnimalsMythical & name.find("Mythical") != std::wstring::npos)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::wstring(Fauna.GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					}
-				}
-				else if (Vars.ESP.MenuTake.AnimalsLegendary & name.find("Legendary") != std::wstring::npos)
-				{
-					if ((int)distance < 10) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-					}
-					else if ((int)distance < 5) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-					}
-					else if ((int)distance < 2) {
-						DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-					}
-					else {
-						DrawString(std::wstring(Fauna.GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-					}
-				}
-		}
-
-		//ITEMS
 		else if (name.find("Proxy") != std::string::npos)
 		{
-			auto pos = actor.GetRootComponent().GetPosition();
-			auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
+		if (!Vars.ESP.Treasure.bActive)
+			continue;
+		auto pos = actor.GetRootComponent().GetPosition();
+		auto distance = SOT->localCamera.position.DistTo(pos) / 100.00f;
 
 			auto treasure = *reinterpret_cast<AItemProxy*>(&actors[i]);
 
@@ -1961,173 +624,27 @@ void cCheat::readData()
 
 			Color color = Color{ Vars.ESP.colorOther[0], Vars.ESP.colorOther[1], Vars.ESP.colorOther[2], Vars.ESP.colorOther[3] };
 
+			if (name.find("Common") != std::wstring::npos)
+				color = Color{ Vars.ESP.colorCommon[0], Vars.ESP.colorCommon[1], Vars.ESP.colorCommon[2], Vars.ESP.colorCommon[3] };
+
+			else if (name.find("Rare") != std::wstring::npos)
+				color = Color{ Vars.ESP.colorRare[0], Vars.ESP.colorRare[1], Vars.ESP.colorRare[2], Vars.ESP.colorRare[3] };
+
+			else if (name.find("Mythical") != std::wstring::npos)
+				color = Color{ Vars.ESP.colorMythical[0], Vars.ESP.colorMythical[1], Vars.ESP.colorMythical[2], Vars.ESP.colorMythical[3] };
+
+			else if (name.find("Legendary") != std::wstring::npos)
+				color = Color{ Vars.ESP.colorLegendary[0], Vars.ESP.colorLegendary[1], Vars.ESP.colorLegendary[2], Vars.ESP.colorLegendary[3] };
+			else if (rarity.find("Fort") != std::string::npos || rarity.find("Stronghold") != std::string::npos || rarity.find("PirateLegend") != std::string::npos || rarity.find("Drunken") != std::string::npos || rarity.find("Weeping") != std::string::npos || rarity.find("AIShip") != std::string::npos)
+				color = Color{ Vars.ESP.colorSpecial[0], Vars.ESP.colorSpecial[1], Vars.ESP.colorSpecial[2], Vars.ESP.colorSpecial[3] };
+
 			Vector2 Screen;
-
 			if (Misc->WorldToScreen(pos, &Screen))
-			{
-				if (name.find("Common") != std::wstring::npos && name.find("GunpowderBarrel") == std::wstring::npos && name.find("ChickenCrate") == std::wstring::npos && name.find("PigCrate") == std::wstring::npos && name.find("BananaCrate") == std::wstring::npos && name.find("WoodCrate") == std::wstring::npos && name.find("SnakeBasket") == std::wstring::npos && name.find("CannonballCrate") == std::wstring::npos)
-				{
-					color = Color{ Vars.ESP.colorCommon[0], Vars.ESP.colorCommon[1], Vars.ESP.colorCommon[2], Vars.ESP.colorCommon[3] };
-
-					if (Vars.ESP.MenuTake.ItemsCommon)
-					{
-						if (Misc->WorldToScreen(pos, &Screen))
-						{
-							if ((int)distance < 10) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-							}
-							else if ((int)distance < 5) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-							}
-							else if ((int)distance < 2) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-							}
-							else {
-								DrawString(std::wstring(treasure.GetBootyItemInfo().GetItemDesc().GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-								if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-								{
-									DrawCircle(Screen.x, Screen.y, 3, 25, color);
-								}
-							}
-						}
-					}
-				}
-				else if (name.find("Rare") != std::wstring::npos)
-				{
-					color = Color{ Vars.ESP.colorRare[0], Vars.ESP.colorRare[1], Vars.ESP.colorRare[2], Vars.ESP.colorRare[3] };
-
-					if (Vars.ESP.MenuTake.ItemsRare)
-					{
-						if (Misc->WorldToScreen(pos, &Screen))
-						{
-							if ((int)distance < 10) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-							}
-							else if ((int)distance < 5) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-							}
-							else if ((int)distance < 2) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-							}
-							else {
-								DrawString(std::wstring(treasure.GetBootyItemInfo().GetItemDesc().GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-								if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-								{
-									DrawCircle(Screen.x, Screen.y, 3, 25, color);
-								}
-							}
-						}
-					}
-				}
-				else if (name.find("Mythical") != std::wstring::npos)
-				{
-					color = Color{ Vars.ESP.colorMythical[0], Vars.ESP.colorMythical[1], Vars.ESP.colorMythical[2], Vars.ESP.colorMythical[3] };
-
-					if (Vars.ESP.MenuTake.ItemsMythical)
-					{
-						if (Misc->WorldToScreen(pos, &Screen))
-						{
-							if ((int)distance < 10) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-							}
-							else if ((int)distance < 5) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-							}
-							else if ((int)distance < 2) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-							}
-							else {
-								DrawString(std::wstring(treasure.GetBootyItemInfo().GetItemDesc().GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-								if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-								{
-									DrawCircle(Screen.x, Screen.y, 3, 25, color);
-								}
-							}
-						}
-					}
-				}
-				else if (name.find("Legendary") != std::wstring::npos)
-				{
-					color = Color{ Vars.ESP.colorLegendary[0], Vars.ESP.colorLegendary[1], Vars.ESP.colorLegendary[2], Vars.ESP.colorLegendary[3] };
-
-					if (Vars.ESP.MenuTake.ItemsLegendary)
-					{
-						if (Misc->WorldToScreen(pos, &Screen))
-						{
-							if ((int)distance < 10) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-							}
-							else if ((int)distance < 5) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-							}
-							else if ((int)distance < 2) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-							}
-							else {
-								DrawString(std::wstring(treasure.GetBootyItemInfo().GetItemDesc().GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-								if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-								{
-									DrawCircle(Screen.x, Screen.y, 3, 25, color);
-								}
-							}
-						}
-					}
-				}
-				else if (name.find("Fort") != std::string::npos || name.find("Stronghold") != std::string::npos || name.find("PirateLegend") != std::string::npos || name.find("Drunken") != std::string::npos || name.find("Weeping") != std::string::npos || name.find("AIShip") != std::string::npos || name.find("Ashen") != std::string::npos || name.find("DVR") != std::string::npos)
-				{
-					color = Color{ Vars.ESP.colorSpecial[0], Vars.ESP.colorSpecial[1], Vars.ESP.colorSpecial[2], Vars.ESP.colorSpecial[3] };
-
-					if (Vars.ESP.MenuTake.ItemsLegendary)
-					{
-						if (Misc->WorldToScreen(pos, &Screen))
-						{
-							if ((int)distance < 10) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-							}
-							else if ((int)distance < 5) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-							}
-							else if ((int)distance < 2) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-							}
-							else {
-								DrawString(std::wstring(treasure.GetBootyItemInfo().GetItemDesc().GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-								if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-								{
-									DrawCircle(Screen.x, Screen.y, 3, 25, color);
-								}
-							}
-						}
-					}
-				}
-				else if (rarity.find("Fort") != std::string::npos || rarity.find("Stronghold") != std::string::npos || rarity.find("PirateLegend") != std::string::npos || rarity.find("Drunken") != std::string::npos || rarity.find("Weeping") != std::string::npos || rarity.find("AIShip") != std::string::npos || rarity.find("Ashen") != std::string::npos || rarity.find("DVR") != std::string::npos)
-				{
-					color = Color{ Vars.ESP.colorSpecial[0], Vars.ESP.colorSpecial[1], Vars.ESP.colorSpecial[2], Vars.ESP.colorSpecial[3] };
-
-					if (Vars.ESP.MenuTake.ItemsLegendary)
-					{
-						if (Misc->WorldToScreen(pos, &Screen))
-						{
-							if ((int)distance < 10) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_3");
-							}
-							else if ((int)distance < 5) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_2");
-							}
-							else if ((int)distance < 2) {
-								DrawString("» • «", Screen.x, Screen.y, color, true, "dist_1");
-							}
-							else {
-								DrawString(std::wstring(treasure.GetBootyItemInfo().GetItemDesc().GetName() + L" » " + std::to_wstring((int)distance) + L"m").c_str(), Screen.x, Screen.y + 5, color, true, "small");
-								if (Vars.ESP.MenuTake.ItemsHarpoonSupport)
-								{
-									DrawCircle(Screen.x, Screen.y, 3, 25, color);
-								}
-							}
-						}
-					}
-				}
-			}
+				DrawString(std::wstring(treasure.GetBootyItemInfo().GetItemDesc().GetName() + L" [ " + std::to_wstring((int)distance) + L"m ] ").c_str(), Screen.x, Screen.y, color, true, "default");
 		}
+
 	}
+
+
+
 }
